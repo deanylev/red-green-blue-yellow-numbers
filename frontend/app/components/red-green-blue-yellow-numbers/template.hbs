@@ -1,0 +1,5 @@
+{{#if this.socket.connected}}
+  {{yield}}
+{{else}}
+  <h1>Connecting...</h1>
+{{/if}}

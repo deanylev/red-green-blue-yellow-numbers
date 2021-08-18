@@ -1,0 +1,40 @@
+<div local-class="RouteGame">
+  {{#if this.game}}
+    <h1>ID</h1>
+    {{this.game.id}}
+    <h1>Last Card</h1>
+    <div style="background: {{this.game.lastCardPlayed.colour}}">
+      {{this.game.lastCardPlayed.type}}
+    </div>
+    <h1>Players</h1>
+    {{#each this.game.players as |player|}}
+      <div style={{if player.current "background: black; color: white"}}>
+        {{player.name}} - {{player.points}} {{if player.host "- (Host)"}}
+      </div>
+    {{/each}}
+
+    {{#if this.game.playing}}
+      {{#each this.socket.player.cards as |card|}}
+        <button disabled={{not this.socket.player.current}} style="background: {{card.colour}}" {{on "click" (fn this.handlePlayCard card.type card.colour)}}>{{card.type}}</button>
+      {{/each}}
+
+      {{#if this.wildCardTypePlaying}}
+        <div>
+          {{#each this.colours as |colour|}}
+            <button style="background: {{colour}}" {{on "click" (fn this.handlePlayCard this.wildCardTypePlaying colour)}}>{{colour}}</button>
+          {{/each}}
+        </div>
+      {{/if}}
+
+      <div>
+        <button disabled={{not this.socket.player.current}} {{on "click" this.handleTakeCard}}>Take Card</button>
+      </div>
+    {{/if}}
+
+    {{#if (and this.socket.player.host (not this.game.playing))}}
+      <button {{on "click" this.handleStart}}>Start</button>
+    {{/if}}
+  {{else}}
+    <h1>No game</h1>
+  {{/if}}
+</div>
