@@ -3,17 +3,28 @@ import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import Component from '@glint/environment-ember-loose/glimmer-component';
 
-import { COLOURS, CardType, Colour, Wild } from 'red-green-blue-yellow-numbers/lib/shared';
+import { COLOURS, MIN_PLAYERS, CardType, Colour, Wild, MAX_PLAYERS } from 'red-green-blue-yellow-numbers/lib/shared';
 import SocketService from 'red-green-blue-yellow-numbers/services/socket';
 
 export default class RouteGame extends Component {
   @service declare socket: SocketService;
 
   colours = COLOURS;
+  maxPlayers = MAX_PLAYERS;
+  minPlayers = MIN_PLAYERS;
   @tracked wildCardTypePlaying: Wild | null = null;
 
   get game() {
     return this.socket.game;
+  }
+
+  get notEnoughPlayers() {
+    const playersLength = this.game?.players.length;
+    return !playersLength || playersLength < this.minPlayers;
+  }
+
+  get player() {
+    return this.socket.player;
   }
 
   @action
@@ -36,6 +47,14 @@ export default class RouteGame extends Component {
   @action
   handleTakeCard() {
     return this.socket.takeCard();
+  }
+
+  async willDestroy() {
+    if (this.socket.game) {
+      await this.socket.leaveGame();
+    }
+
+    super.willDestroy();
   }
 }
 

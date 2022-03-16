@@ -1,0 +1,28 @@
+.RouteGame {
+  > .info > div {
+    padding-bottom: 25px;
+
+    > .player {
+      padding-bottom: 5px;
+    }
+  }
+
+  > .players {
+    display: grid;
+    grid-template: 1fr 5fr 1fr / repeat(4, 1fr);
+
+    > div {
+      align-items: center;
+      display: flex;
+      justify-content: center;
+
+      &.orderMid {
+        order: 1;
+      }
+
+      &.orderHigh {
+        order: 2;
+      }
+    }
+  }
+}

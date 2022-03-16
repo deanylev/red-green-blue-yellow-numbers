@@ -1,0 +1,28 @@
+.ColouredBars {
+  display: flex;
+
+  &.reverse {
+    flex-direction: row-reverse;
+  }
+
+  > div {
+    flex: 1;
+    height: 4px;
+
+    &.red {
+      background: red;
+    }
+
+    &.green {
+      background: green;
+    }
+
+    &.blue {
+      background: blue;
+    }
+
+    &.yellow {
+      background: yellow;
+    }
+  }
+}

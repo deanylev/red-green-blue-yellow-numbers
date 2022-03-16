@@ -1,2 +1,15 @@
 .RouteIndex {
+  > form {
+    padding-bottom: 50px;
+
+    > div {
+      > button {
+        width: 100%;
+      }
+
+      > input {
+        margin-bottom: 15px;
+      }
+    }
+  }
 }

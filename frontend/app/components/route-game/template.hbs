@@ -1,21 +1,10 @@
 <div local-class="RouteGame">
   {{#if this.game}}
-    <h1>ID</h1>
-    {{this.game.id}}
-    <h1>Last Card</h1>
-    <div style="background: {{this.game.lastCardPlayed.colour}}">
-      {{this.game.lastCardPlayed.type}}
-    </div>
-    <h1>Players</h1>
-    {{#each this.game.players as |player|}}
-      <div style={{if player.current "background: black; color: white"}}>
-        {{player.name}} - {{player.points}} {{if player.host "- (Host)"}}
-      </div>
-    {{/each}}
-
     {{#if this.game.playing}}
-      {{#each this.socket.player.cards as |card|}}
-        <button disabled={{not this.socket.player.current}} style="background: {{card.colour}}" {{on "click" (fn this.handlePlayCard card.type card.colour)}}>{{card.type}}</button>
+      <div style="background: {{this.game.lastCardPlayed.colour}}">{{this.game.lastCardPlayed.type}}</div>
+
+      {{#each this.player.cards as |card|}}
+        <button disabled={{not this.player.current}} style="background: {{card.colour}}" {{on "click" (fn this.handlePlayCard card.type card.colour)}}>{{card.type}}</button>
       {{/each}}
 
       {{#if this.wildCardTypePlaying}}
@@ -27,12 +16,36 @@
       {{/if}}
 
       <div>
-        <button disabled={{not this.socket.player.current}} {{on "click" this.handleTakeCard}}>Take Card</button>
+        <button disabled={{not this.player.current}} {{on "click" this.handleTakeCard}}>Take Card</button>
       </div>
-    {{/if}}
 
-    {{#if (and this.socket.player.host (not this.game.playing))}}
-      <button {{on "click" this.handleStart}}>Start</button>
+      <div local-class="players">
+        <div local-class="orderMid"></div>
+        <div local-class="orderMid"></div>
+        {{#each this.game.players as |player index|}}
+          <div local-class={{if (gte index 5) "orderHigh"}}>
+            {{player.name}} {{if player.current "(their turn)"}} - {{player.cards.length}} Cards
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <div local-class="info">
+        <div>
+          <Heading @text="ID" />
+          {{this.game.id}}
+        </div>
+        <div>
+          <Heading @text="Players ({{this.game.players.length}}/{{this.maxPlayers}})" />
+          {{#each this.game.players as |player|}}
+            <div local-class="player">
+              {{player.name}} {{if player.host "(Host)"}} - {{player.points}} Points
+            </div>
+          {{/each}}
+        </div>
+        {{#if this.player.host}}
+          <button disabled={{this.notEnoughPlayers}} {{on "click" this.handleStart}}>Start</button>
+        {{/if}}
+      </div>
     {{/if}}
   {{else}}
     <h1>No game</h1>

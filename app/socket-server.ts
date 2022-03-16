@@ -11,9 +11,12 @@ import { Server, Socket } from 'socket.io';
 import {
   ALL_TYPES,
   COLOURS,
+  ID_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
   NUMBERS,
   SPECIALS,
-  STANDARDS,
   WILDS,
   CardType,
   Colour,
@@ -22,7 +25,6 @@ import {
   SerializedGame,
   SerializedPlayer,
   Special,
-  Standard,
   Wild
 } from '../frontend/app/lib/shared';
 import { generateNumber, getRandomElement } from './util';
@@ -32,10 +34,6 @@ const { PORT } = process.env;
 
 // constants
 const GAME_ROOM_PREFIX = 'GAME-';
-const MAX_NAME_LENGTH = 50;
-const MAX_PLAYERS = 10;
-const MIN_PLAYERS = 2;
-const NAME_VALIDATION_REGEX = /[^a-zA-Z1-9_\-.]/;
 
 class Card {
   colour: Colour | null;
@@ -102,15 +100,16 @@ class Game {
   cardsPlayed: Card[] = [];
   cardsRemaining: Card[] = [];
   currentPlayer: Player | null = null;
+  destroyed = false;
   hostPlayer: Player | null = null;
   id: string;
   io: Server;
   players: Player[] = [];
-  playersBySocketId = new Map<string, Player>();
+  playersBySocket = new Map<Socket, Player>();
   playing = false;
   winningPlayer: Player | null = null;
 
-  get lastCardPlayed() {
+  get lastCardPlayed(): Card | null {
     return this.cardsPlayed[0] ?? null;
   }
 
@@ -133,7 +132,7 @@ class Game {
     }
 
     this.players.push(player);
-    this.playersBySocketId.set(player.socket.id, player);
+    this.playersBySocket.set(player.socket, player);
     player.socket.join(this.roomId);
   }
 
@@ -149,12 +148,28 @@ class Game {
     this.winningPlayer.points += points;
   }
 
+  destroy() {
+    this.emit('game_data', null);
+
+    this.players.forEach((player) => {
+      player.socket.leave(this.roomId);
+    });
+  }
+
   emit(name: string, ...data: unknown[]) {
     this.io.to(this.roomId).emit(name, ...data);
   }
 
+  end() {
+    this.playing = false;
+    this.cardsPlayed = [];
+    this.cardsRemaining = [];
+    this.currentPlayer = null;
+    this.winningPlayer = null;
+  }
+
   static generateId() {
-    return generateNumber(6).toString();
+    return generateNumber(ID_LENGTH).toString();
   }
 
   giveCardsToPlayer(player: Player, amount: number) {
@@ -189,7 +204,14 @@ class Game {
       case 'wild':
     }
 
-    this.currentPlayer = this.players[nextPlayerIndex];
+    if (player.cards.length > 0) {
+      this.currentPlayer = this.players[nextPlayerIndex];
+    } else {
+      this.currentPlayer = null;
+      this.winningPlayer = player;
+      this.assignPoints();
+    }
+
     this.refreshClients();
   }
 
@@ -206,6 +228,28 @@ class Game {
 
   refreshClients() {
     this.emit('game_data', this.serialize());
+  }
+
+  removePlayer(socket: Socket) {
+    const player = this.playersBySocket.get(socket);
+    if (!player) {
+      return;
+    }
+
+    if (this.playing) {
+      this.end();
+    }
+
+    this.playersBySocket.delete(socket);
+    this.players = this.players.filter((filteredPlayer) => filteredPlayer !== player);
+
+    if (this.players.length === 0) {
+      this.destroy();
+    } else if (this.hostPlayer === player) {
+      this.hostPlayer = getRandomElement(this.players);
+    }
+
+    this.refreshClients();
   }
 
   reset() {
@@ -241,14 +285,13 @@ class Game {
     this.cardsPlayed.unshift(firstCard);
 
     this.currentPlayer = getRandomElement(this.players);
-
-    this.refreshClients();
+    this.winningPlayer = null;
   }
 
   serialize(): SerializedGame {
     return {
       id: this.id,
-      lastCardPlayed: this.lastCardPlayed?.serialize(),
+      lastCardPlayed: this.lastCardPlayed?.serialize() ?? null,
       players: this.players.map((player) => player.serialize(this.currentPlayer, this.hostPlayer, this.winningPlayer)),
       playing: this.playing
     };
@@ -258,6 +301,7 @@ class Game {
     this.playing = true;
 
     this.reset();
+    this.refreshClients();
   }
 
   takeCard(player: Player) {
@@ -295,6 +339,24 @@ class SocketServer {
       console.log('connection', {
         id: socket.id,
         remoteAddress: socket.conn.remoteAddress
+      });
+
+      socket.on('disconnect', () => {
+        const game = this.gamesBySocket.get(socket);
+        console.log('disconnect', {
+          id: socket.id,
+          inGame: !!game
+        });
+        if (!game) {
+          return;
+        }
+
+        game.removePlayer(socket);
+        this.gamesBySocket.delete(socket);
+
+        if (game.destroyed) {
+          this.gamesById.delete(game.id);
+        }
       });
 
       const registerFeature = (name: string, callback: (data: Record<string, unknown>, respond: (success: boolean, data?: Record<string, unknown>) => void) => void) => {
@@ -354,6 +416,13 @@ class SocketServer {
           return;
         }
 
+        if (game.playing) {
+          respond(false, {
+            reason: FailureReason.GAME_STARTED
+          });
+          return;
+        }
+
         if (game.players.length === MAX_PLAYERS) {
           respond(false, {
             reason: FailureReason.GAME_FULL
@@ -361,7 +430,7 @@ class SocketServer {
           return;
         }
 
-        if (!name || name.length > MAX_NAME_LENGTH || NAME_VALIDATION_REGEX.test(name)) {
+        if (!name || name.length > MAX_NAME_LENGTH) {
           respond(false, {
             reason: FailureReason.NAME_INVALID
           });
@@ -376,7 +445,7 @@ class SocketServer {
           return;
         }
 
-        const player = new Player(name, socket);
+        const player = new Player(name.trim(), socket);
         game.addPlayer(player);
         game.refreshClients();
         this.gamesBySocket.set(socket, game);
@@ -393,7 +462,7 @@ class SocketServer {
           return;
         }
 
-        if (game.hostPlayer !== game.playersBySocketId.get(socket.id)) {
+        if (game.hostPlayer !== game.playersBySocket.get(socket)) {
           respond(false, {
             reason: FailureReason.PLAYER_NOT_HOST
           });
@@ -442,7 +511,7 @@ class SocketServer {
           return;
         }
 
-        const player = game.playersBySocketId.get(socket.id) as Player;
+        const player = game.playersBySocket.get(socket) as Player;
 
         if (game.currentPlayer !== player) {
           respond(false, {
@@ -461,7 +530,7 @@ class SocketServer {
         }
 
         if (
-          !(matchingCard.isColour && (matchingCard.colour === game.lastCardPlayed.colour || matchingCard.type === game.lastCardPlayed.type)
+          !(matchingCard.isColour && (matchingCard.colour === game.lastCardPlayed?.colour || matchingCard.type === game.lastCardPlayed?.type)
           || matchingCard.isWild)
         ) {
           respond(false, {
@@ -495,7 +564,7 @@ class SocketServer {
           return;
         }
 
-        const player = game.playersBySocketId.get(socket.id) as Player;
+        const player = game.playersBySocket.get(socket) as Player;
 
         if (game.currentPlayer !== player) {
           respond(false, {
@@ -505,6 +574,22 @@ class SocketServer {
         }
 
         game.takeCard(player);
+        respond(true);
+      });
+
+      registerFeature('game_leave', (data, respond) => {
+        const game = this.gamesBySocket.get(socket);
+
+        if (!game) {
+          respond(false, {
+            reason: FailureReason.NOT_IN_GAME
+          });
+          return;
+        }
+
+        game.removePlayer(socket);
+        this.gamesBySocket.delete(socket);
+        respond(true);
       });
     });
 

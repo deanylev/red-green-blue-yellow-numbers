@@ -1,5 +1,18 @@
-{{#if this.socket.connected}}
-  {{yield}}
-{{else}}
-  <h1>Connecting...</h1>
-{{/if}}
+<div local-class="RedGreenBlueYellowNumbers">
+  <EmberNotify @closeAfter={{4000}} />
+  <ColouredBars />
+  <div local-class="content">
+    <div local-class="header">
+      <div local-class="logo">Red Green Blue Yellow Numbers</div>
+      <div>by Dean Levinson</div>
+    </div>
+    <div local-class="body">
+      {{#if this.socket.connected}}
+        {{yield}}
+      {{else}}
+        <h1>Connecting...</h1>
+      {{/if}}
+    </div>
+  </div>
+  <ColouredBars @reverse={{true}} />
+</div>

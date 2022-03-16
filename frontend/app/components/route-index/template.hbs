@@ -1,4 +1,30 @@
 <div local-class="RouteIndex">
-  <LinkTo @route="create">Create</LinkTo>
-  <LinkTo @route="join">Join</LinkTo>
+  <Heading @text="Create a Game" />
+  <form {{on "submit" this.handleCreateSubmit}}>
+    <div>
+      <input maxlength={{this.maxNameLength}} placeholder="Your Name" value={{this.createName}} {{on "input" (fn this.handleInput "createName")}} />
+    </div>
+    <div>
+      <LaddaButton @disabled={{not this.createName}} @inFlight={{this.createInFlight}} @type="submit">Create Game</LaddaButton>
+    </div>
+  </form>
+  <Heading @text="Join a Game" />
+  <form {{on "submit" this.handleJoinSubmit}}>
+    <div>
+      <input
+        maxlength={{this.idLength}}
+        placeholder="ID"
+        type="text"
+        value={{this.joinId}}
+        {{on "beforeinput" this.handleJoinIdBeforeInput}}
+        {{on "input" (fn this.handleInput "joinId")}}
+      >
+    </div>
+    <div>
+      <input maxlength={{this.maxNameLength}} placeholder="Your Name" value={{this.joinName}} {{on "input" (fn this.handleInput "joinName")}} />
+    </div>
+    <div>
+      <LaddaButton @disabled={{not (and this.joinId this.joinName)}} @inFlight={{this.joinInFlight}} @type="submit">Join Game</LaddaButton>
+    </div>
+  </form>
 </div>

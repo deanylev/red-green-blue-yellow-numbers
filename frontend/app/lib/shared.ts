@@ -35,6 +35,11 @@ export const ALL_TYPES = [
   ...WILDS
 ] as const;
 
+export const ID_LENGTH = 6;
+export const MAX_NAME_LENGTH = 100;
+export const MAX_PLAYERS = 10;
+export const MIN_PLAYERS = 2;
+
 // enums
 export enum FailureReason {
   ALREADY_IN_GAME = 'already_in_game',
@@ -77,7 +82,7 @@ export interface SerializedPlayer {
 
 export interface SerializedGame {
   id: string;
-  lastCardPlayed: SerializedCard;
+  lastCardPlayed: SerializedCard | null;
   players: SerializedPlayer[];
   playing: boolean;
 }

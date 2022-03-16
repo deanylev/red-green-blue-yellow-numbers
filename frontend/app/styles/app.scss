@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=PT+Sans+Caption:wght@400;700&display=swap');
+
+$neutral: #36454f;
+$white: #fff;
+
+html {
+  height: 100%;
+}
+
+body {
+  color: $white;
+  font-family: 'PT Sans Caption', sans-serif;
+  height: 100%;
+  margin: 0;
+  text-align: center;
+}
+
+button {
+  background: #36454f;
+  border: 0;
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+  font-family: 'PT Sans Caption', sans-serif;
+  font-size: 17px;
+  padding: 10px 15px;
+
+  &:hover {
+    background: darken($neutral, 5%);
+  }
+
+  &:active {
+    background: darken($neutral, 10%);
+  }
+
+  &:disabled {
+    opacity: 60%;
+  }
+}
+
+input {
+  background: black;
+  border: 1px solid grey;
+  border-radius: 5px;
+  color: white;
+  font-family: 'PT Sans Caption', sans-serif;
+  padding: 12.5px 15px;
+}
+
+:global(.ember-notify) {
+  background: $neutral;
+  border-radius: 5px;
+
+  > :global(.close) {
+    color: $white;
+    text-decoration: none;
+  }
+}
